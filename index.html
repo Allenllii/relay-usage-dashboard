@@ -1,0 +1,1311 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中转站用量面板</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="models.js"></script>
+<script src="demo.js"></script>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --line: #e3e6eb; --text: #1b1f24; --muted: #667080;
+  --accent: #2f6fde; --accent-soft: #e8f0fd; --danger: #c83a3a; --danger-soft: #fdeeee;
+  --ok: #1f8a55; --warn: #b7791f; --warn-soft: #fdf4e3;
+  --c1: #2f6fde; --c2: #20a39e; --c3: #e0882b; --c4: #8a63d2; --c5: #d0527a; --c6: #5b8c2a; --c7: #c0a020; --c8: #3f9bd1; --c9: #9aa3ae;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111418; --panel: #1a1e24; --line: #2b313a; --text: #e7eaee; --muted: #9099a6;
+    --accent: #6c9cf0; --accent-soft: #1f2b40; --danger: #ef7676; --danger-soft: #3a2224;
+    --ok: #4cc28a; --warn: #e0a84a; --warn-soft: #3a3020;
+    --c1: #6c9cf0; --c2: #3cc4bd; --c3: #f0a050; --c4: #a98ae6; --c5: #e57a9c; --c6: #8cc25a; --c7: #e0c450; --c8: #6cbbe8; --c9: #7d8794;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111418; --panel: #1a1e24; --line: #2b313a; --text: #e7eaee; --muted: #9099a6;
+  --accent: #6c9cf0; --accent-soft: #1f2b40; --danger: #ef7676; --danger-soft: #3a2224;
+  --ok: #4cc28a; --warn: #e0a84a; --warn-soft: #3a3020;
+  --c1: #6c9cf0; --c2: #3cc4bd; --c3: #f0a050; --c4: #a98ae6; --c5: #e57a9c; --c6: #8cc25a; --c7: #e0c450; --c8: #6cbbe8; --c9: #7d8794;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+h1 { font-size: 20px; margin: 0; font-weight: 650; }
+.spacer { flex: 1; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.panel h2 { font-size: 14px; margin: 0 0 10px; font-weight: 600; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+input, select, button { font: inherit; color: var(--text); }
+input[type=text], input[type=password], input[type=datetime-local], select {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; min-width: 0;
+}
+input:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+button { background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.link { border: 0; background: none; color: var(--accent); padding: 2px 4px; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; flex-wrap: wrap; }
+.seg button { border: 0; border-radius: 0; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; margin: 0 6px 6px 0; cursor: pointer; user-select: none; background: var(--panel); font-size: 13px; }
+.chip.on { border-color: var(--accent); background: var(--accent-soft); }
+.badge { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--bg); color: var(--muted); }
+.badge.ok { color: var(--ok); } .badge.bad { color: var(--danger); } .badge.warn { color: var(--warn); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.kpi .k { font-size: 12px; color: var(--muted); }
+.kpi .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.kpi .s { font-size: 12px; color: var(--muted); }
+.msg { border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; white-space: pre-wrap; display: none; }
+.msg.err { background: var(--danger-soft); color: var(--danger); }
+.msg.warn { background: var(--warn-soft); color: var(--warn); }
+.note { background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; font-size: 12px; color: var(--muted); }
+.tbl-wrap { overflow-x: auto; }
+.tbl-wrap.scroll { max-height: 300px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+th.sort { cursor: pointer; } th.sort:hover { color: var(--accent); }
+.l, th.l, td.l { text-align: left; }
+tr.tot td { font-weight: 650; }
+tr.hl td { background: var(--warn-soft); }
+.bar { height: 6px; border-radius: 3px; background: var(--accent); opacity: .7; }
+.chart-box { position: relative; height: 340px; }
+.models { max-height: 230px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 8px 8px 2px; }
+.models .grp { font-size: 11px; color: var(--muted); margin: 2px 0 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.live { display: inline-flex; align-items: center; gap: 6px; }
+.live .dot { background: var(--muted); }
+.live.on .dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+.progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+.progress div { height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .3s; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+.tabs button { border: 0; border-radius: 0; background: none; padding: 8px 12px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button.on { border-bottom-color: var(--accent); color: var(--accent); font-weight: 600; }
+.hidden { display: none !important; }
+@media (max-width: 640px) { .kpi .v { font-size: 18px; } .chart-box { height: 270px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>中转站用量面板</h1>
+    <span class="badge" id="modeBadge"></span>
+    <span class="muted small" id="acctHint"></span>
+    <span class="spacer"></span>
+    <span class="live small" id="live"><span class="dot"></span><span id="liveText">未连接</span></span>
+    <select id="interval" title="自动刷新间隔">
+      <option value="0">不自动刷新</option>
+      <option value="120">每 2 分钟</option>
+      <option value="300" selected>每 5 分钟</option>
+      <option value="900">每 15 分钟</option>
+    </select>
+    <button id="refresh" class="primary" disabled>立即查询</button>
+  </header>
+
+  <nav class="tabs" id="viewTabs" style="margin-bottom:14px">
+    <button data-v="newapi" class="on">客户用量（new-api）</button>
+    <button data-v="baidu">上游用量（百度）</button>
+  </nav>
+
+  <div id="view-baidu" class="hidden">
+  <div class="msg err" id="err"></div>
+  <div class="msg warn" id="warn"></div>
+
+  <!-- 连接 -->
+  <section class="panel" id="connPanel">
+    <div class="row" style="margin-bottom:10px">
+      <h2 style="margin:0">连接百度接口</h2>
+      <span class="spacer"></span>
+      <span class="small muted">鉴权方式</span>
+      <div class="seg" id="authMode">
+        <button data-m="bearer" class="on">API Key（Bearer）</button>
+        <button data-m="aksk">百度云 AK / SK</button>
+      </div>
+    </div>
+    <div class="row">
+      <label class="f" style="flex:2 1 220px">接入域名（百度提供；填 demo 看演示数据）
+        <input type="text" id="upstream" placeholder="例如 xxx.baidubce.com">
+      </label>
+      <label class="f auth-bearer" style="flex:3 1 280px">API Key（账号下任意一把可用的 sk-…）
+        <input type="password" id="apikey" placeholder="sk-xxxxxxxx" autocomplete="off">
+      </label>
+      <label class="f auth-aksk hidden" style="flex:2 1 200px">Access Key（AK）
+        <input type="text" id="ak" placeholder="AK" autocomplete="off">
+      </label>
+      <label class="f auth-aksk hidden" style="flex:2 1 200px">Secret Key（SK）
+        <input type="password" id="sk" placeholder="SK" autocomplete="off">
+      </label>
+      <label class="small muted" style="display:flex;gap:6px;align-items:center;margin-top:18px" title="勾选后保存在这台电脑的浏览器里；不勾只在本次打开期间有效">
+        <input type="checkbox" id="remember"> 在本机记住
+      </label>
+      <button id="connect" class="primary" style="margin-top:18px">连接</button>
+    </div>
+    <div class="small muted" style="margin-top:8px" id="cfgHint">密钥只发给本机的小服务，由它签名 / 转发给百度，不会发到别处。</div>
+  </section>
+
+  <!-- 筛选 -->
+  <section class="panel hidden" id="queryPanel">
+    <div class="tabs" id="filterTabs">
+      <button data-t="keys" class="on">API Key <span id="keyTabN" class="muted small"></span></button>
+      <button data-t="models">模型 <span id="modelTabN" class="muted small"></span></button>
+    </div>
+
+    <div id="tab-keys">
+      <div class="row" style="margin-bottom:8px">
+        <button class="link" id="keysAll">全选</button>
+        <button class="link" id="keysUsable">只选可用的</button>
+        <button class="link" id="keysNone">清空</button>
+        <span class="spacer"></span>
+        <input type="text" id="keyFind" placeholder="粘贴 sk- 明文，定位是哪一把" style="width:280px;max-width:100%">
+      </div>
+      <div class="tbl-wrap scroll"><table id="keyTable"></table></div>
+    </div>
+
+    <div id="tab-models" class="hidden">
+      <div class="row" style="margin-bottom:8px">
+        <div class="seg" id="modelMode">
+          <button data-m="all" class="on">全部模型</button>
+          <button data-m="pick">手动挑选</button>
+        </div>
+        <span class="small muted" id="scanInfo"></span>
+        <span class="spacer"></span>
+        <button id="rescan">重新扫描在用模型</button>
+      </div>
+      <div id="modelPick" class="hidden">
+        <input type="text" id="modelSearch" placeholder="搜索模型名或端点编码" style="width:100%;margin-bottom:6px">
+        <div class="models" id="modelList"></div>
+      </div>
+      <div class="small muted" id="modelAllNote">按全部 46 个模型统计。系统会先扫描出近 31 天真正用过的「Key × 模型」组合，之后只查这些，省请求次数。</div>
+    </div>
+
+    <div class="row" style="margin-top:14px;gap:16px">
+      <div>
+        <div class="small muted" style="margin-bottom:4px">时间范围（北京时间）</div>
+        <div class="seg" id="ranges"></div>
+      </div>
+      <div class="row hidden" id="customRange">
+        <label class="f">开始<input type="datetime-local" id="cStart"></label>
+        <label class="f">结束<input type="datetime-local" id="cEnd"></label>
+      </div>
+      <label class="f">粒度
+        <select id="gran">
+          <option value="auto">自动</option>
+          <option value="1">分钟</option>
+          <option value="60">小时</option>
+          <option value="1440">天</option>
+          <option value="0">整段汇总</option>
+        </select>
+      </label>
+      <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:18px">
+        <input type="checkbox" id="withCost" checked> 显示金额
+      </label>
+    </div>
+    <div class="note" style="margin-top:12px" id="planNote"></div>
+    <div class="progress hidden" id="progress"><div></div></div>
+  </section>
+
+  <!-- 结果 -->
+  <div id="results" class="hidden">
+    <div class="kpis" id="kpis"></div>
+
+    <section class="panel" id="chartPanel">
+      <div class="row" style="margin-bottom:8px">
+        <h2 style="margin:0">趋势</h2>
+        <span class="spacer"></span>
+        <div class="seg" id="chartDim"></div>
+        <div class="seg" id="chartMetric"></div>
+      </div>
+      <div class="chart-box"><canvas id="chart"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <div class="tabs" id="tblTabs">
+        <button data-t="key" class="on">按 Key</button>
+        <button data-t="model">按模型</button>
+        <button data-t="km">Key × 模型</button>
+        <button data-t="item">计费项</button>
+        <span class="spacer"></span>
+        <button id="csv" style="margin:4px 0">导出原始数据 CSV</button>
+      </div>
+      <div class="tbl-wrap"><table id="tbl"></table></div>
+      <div class="small muted" style="margin-top:8px" id="footNote"></div>
+    </section>
+  </div>
+  </div><!-- /view-baidu -->
+
+  <!-- ================= 客户用量（new-api） ================= -->
+  <div id="view-newapi">
+    <div class="msg err" id="naErr"></div>
+    <div class="msg warn" id="naWarn"></div>
+    <div class="msg err" id="naAlert"></div>
+
+    <section class="panel">
+      <h2>连接 new-api 后台</h2>
+      <div class="row">
+        <label class="f" style="flex:2 1 240px">new-api 地址（你们中转站的网址；填 demo 看演示数据）
+          <input type="text" id="naBase" placeholder="例如 https://api.你们的域名.com">
+        </label>
+        <label class="f" style="flex:3 1 260px">管理员访问令牌（个人设置里生成）
+          <input type="password" id="naToken" placeholder="nap_… 或旧版 32 位令牌" autocomplete="off">
+        </label>
+        <label class="f" style="flex:0 1 120px" title="旧版 new-api 要求同时传用户 ID；新版可留空">用户 ID（旧版才需要）
+          <input type="text" id="naUser" placeholder="可留空">
+        </label>
+        <label class="small muted" style="display:flex;gap:6px;align-items:center;margin-top:18px" title="不勾选则令牌不会保存在浏览器里">
+          <input type="checkbox" id="naRemember"> 在本机记住
+        </label>
+        <button id="naConnect" class="primary" style="margin-top:18px">连接</button>
+      </div>
+      <div class="small muted" style="margin-top:8px">需要<b>管理员</b>账号的访问令牌；新版 new-api 生成令牌时勾选「日志读取（log:read）」和「用户读取（user:read）」两项权限即可，只读，不能改任何东西。</div>
+      <details class="note hidden" id="naCorsHelp" style="margin-top:10px">
+        <summary><b>连不上？网页模式需要 new-api 允许本页面跨域访问</b></summary>
+        <p>new-api 的管理接口默认不允许其他网站的网页调用，浏览器会拦截请求。二选一：</p>
+        <p><b>方法一：在 new-api 前面的 Nginx 里放行这几个只读接口</b>（只对本页面 <code id="naCorsOrigin"></code> 开放；<code>proxy_pass</code> 改成你现有的转发地址）：</p>
+        <pre style="white-space:pre-wrap;user-select:all;background:var(--panel);padding:8px;border-radius:6px;font-size:12px" id="naCorsSnippet"></pre>
+        <p><b>方法二：用本地模式。</b>下载本项目，运行 <code>node server.js</code>，打开 http://127.0.0.1:8787 ，由本机转发请求，不需要改服务器。</p>
+      </details>
+    </section>
+
+    <section class="panel hidden" id="naQuery">
+      <div class="row" style="gap:16px">
+        <div>
+          <div class="small muted" style="margin-bottom:4px">时间范围（北京时间，按小时统计）</div>
+          <div class="seg" id="naRanges"></div>
+        </div>
+        <label class="f" style="flex:1 1 200px">筛选客户 / 模型
+          <input type="text" id="naFind" placeholder="输入客户名、用户名或模型名">
+        </label>
+        <button id="naRefresh" class="primary" style="margin-top:18px">立即查询</button>
+      </div>
+      <div class="row small muted" style="margin-top:10px">
+        低余额提醒：余额低于 $<input type="text" id="naLowUsd" inputmode="decimal" style="width:64px">
+        或按近 7 天日均消耗，预计 <input type="text" id="naLowDays" inputmode="decimal" style="width:48px"> 天内用完
+        <span>（只看近 7 天有消耗、状态正常的客户）</span>
+      </div>
+      <div class="note" style="margin-top:12px" id="naNote"></div>
+    </section>
+
+    <div id="naResults" class="hidden">
+      <div class="kpis" id="naKpis"></div>
+      <section class="panel">
+        <div class="row" style="margin-bottom:8px">
+          <h2 style="margin:0">趋势</h2>
+          <span class="spacer"></span>
+          <div class="seg" id="naChartDim"></div>
+          <div class="seg" id="naChartMetric"></div>
+        </div>
+        <div class="chart-box"><canvas id="naChart"></canvas></div>
+      </section>
+      <section class="panel">
+        <div class="tabs" id="naTblTabs">
+          <button data-t="user" class="on">按客户</button>
+          <button data-t="balance">客户余额</button>
+          <button data-t="model">按模型</button>
+          <button data-t="um">客户 × 模型</button>
+          <button data-t="channel">按渠道</button>
+          <span class="spacer"></span>
+          <button id="naCsv" style="margin:4px 0">导出 CSV</button>
+        </div>
+        <div class="tbl-wrap"><table id="naTbl"></table></div>
+        <div class="small muted" style="margin-top:8px" id="naFoot"></div>
+      </section>
+    </div>
+  </div><!-- /view-newapi -->
+</div>
+
+<script>
+// ================= 常量 =================
+// 计费项归类（文档附录 B）。未知计费项照样展示，只是归到「其他」
+const CATS = [
+  { id: 'out',   name: '输出',       test: (k) => k.startsWith('completion_tokens') },
+  { id: 'hit',   name: '缓存命中',   test: (k) => k.startsWith('prompt_cache_hit_tokens') },
+  { id: 'miss',  name: '未命中输入', test: (k) => k.startsWith('prompt_cache_miss_tokens') },
+  { id: 'write', name: '缓存写入',   test: (k) => k.startsWith('ephemeral_') },
+  { id: 'other', name: '其他 token', test: (k) => /tokens/.test(k) },
+];
+const COUNT_ITEMS = { web_search_requests: '次' };
+const catOf = (k) => (COUNT_ITEMS[k] ? null : (CATS.find((c) => c.test(k)) || CATS[4]));
+const PALETTE = ['--c1', '--c2', '--c3', '--c4', '--c5', '--c6', '--c7', '--c8'];
+const OTHER_COLOR = '--c9';
+const MODEL_BY_NAME = Object.fromEntries(MODELS.map(([g, ep, name]) => [name, { g, ep, name }]));
+const ALL_MODEL_NAMES = MODELS.map((m) => m[2]);
+const GAP_MS = 1200;           // 文档建议请求间隔 ≥ 1.2 秒（60 次/分钟/账号）
+const SCAN_TTL = 3600 * 1000;  // 在用模型清单 1 小时后自动重扫
+
+// ================= 状态与存储 =================
+const st = {
+  auth: 'bearer', keys: [], selKeys: new Set(), modelMode: 'all', selModels: new Set(['claude-opus-5']),
+  range: 'today', scan: null, last: null, timer: null, nextAt: 0, busy: false,
+  chartDim: 'cat', chartMetric: 'tokens', tbl: 'key', sort: null,
+};
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const store = {
+  get(k) { try { return localStorage.getItem(k) ?? sessionStorage.getItem(k); } catch { return null; } },
+  set(k, v, persist) {
+    try { (persist ? localStorage : sessionStorage).setItem(k, v); (persist ? sessionStorage : localStorage).removeItem(k); } catch {}
+  },
+  json(k) { try { return JSON.parse(this.get(k) || 'null'); } catch { return null; } },
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ================= 时间（统一北京时间） =================
+const BJ = 8 * 3600;
+const now = () => Math.floor(Date.now() / 1000);
+const bjDayStart = (t) => Math.floor((t + BJ) / 86400) * 86400 - BJ;
+const p2 = (n) => String(n).padStart(2, '0');
+const fmtTs = (ts, g) => {
+  const d = new Date((ts + BJ) * 1000);
+  const date = `${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
+  return g === 1440 ? date : `${date} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
+};
+const fmtDate = (ts) => { const d = new Date((ts + BJ) * 1000); return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`; };
+const toLocalInput = (ts) => new Date((ts + BJ) * 1000).toISOString().slice(0, 16);
+const fromLocalInput = (s) => Math.floor(Date.parse(s + ':00Z') / 1000) - BJ;
+const bjClock = (ms) => new Date(ms).toLocaleTimeString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' });
+
+const RANGES = [
+  { id: '1h', name: '近 1 小时', calc: (n) => [n - 3600, n] },
+  { id: 'today', name: '今天', calc: (n) => [bjDayStart(n), n] },
+  { id: '24h', name: '近 24 小时', calc: (n) => [n - 86400, n] },
+  { id: '7d', name: '近 7 天', calc: (n) => [bjDayStart(n) - 6 * 86400, n] },
+  { id: 'month', name: '本月', calc: (n) => { const d = new Date((n + BJ) * 1000); return [Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000 - BJ, n]; } },
+  { id: '30d', name: '近 30 天', calc: (n) => [bjDayStart(n) - 29 * 86400, n] },
+  { id: 'custom', name: '自定义' },
+];
+const MAX_SPAN = { 1: 86400, 60: 7 * 86400, 1440: 31 * 86400, 0: 31 * 86400 };
+const SPAN_NAME = { 1: '1 天', 60: '7 天', 1440: '31 天', 0: '31 天' };
+
+// ================= 运行模式 =================
+// 本地模式：页面由 server.js 提供（/config 返回 proxy: true），请求经本机转发，支持 AK/SK 签名。
+// 网页模式：部署在 GitHub Pages 等静态托管上，浏览器直连百度 / new-api，密钥不经过任何第三方。
+// 地址填 demo 时两种模式都不发网络请求，由 demo.js 返回演示数据。
+let MODE = 'direct', CFG = {};
+const modeReady = fetch('config', { cache: 'no-store' })
+  .then((r) => (r.ok ? r.json() : {}))
+  .then((c) => { if (c.proxy) { MODE = 'proxy'; CFG = c; } })
+  .catch(() => {});
+const hostUrl = (v) => (v.includes('://') ? v : `https://${v}`).replace(/\/+$/, '');
+const unreachable = (host) => new Error(`连不上 ${host}：可能是网络不通、地址填错，或者对方不允许网页直接访问（跨域）。`);
+
+// 百度请求：返回 { status, data }
+async function baiduRequest(method, path, body) {
+  const up = $('upstream').value.trim(), key = $('apikey').value.trim(), ak = $('ak').value.trim(), sk = $('sk').value.trim();
+  const u = new URL(path, 'https://x');
+  if (up === 'demo') {
+    const authed = st.auth === 'bearer' ? /^sk-\S+$/.test(key) : !!(ak && sk);
+    return Demo.baidu(method, u.pathname, u.searchParams, body, authed);
+  }
+  if (MODE === 'proxy') {
+    const headers = { 'X-Upstream': up, 'X-Auth-Mode': st.auth };
+    if (st.auth === 'bearer') { if (key) headers['X-Api-Key'] = key; }
+    else { if (ak) headers['X-Bce-Ak'] = ak; if (sk) headers['X-Bce-Sk'] = sk; }
+    if (body) headers['Content-Type'] = 'application/json';
+    const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+    return { status: res.status, data: await res.json().catch(() => ({ code: 'BadResponse', message: `HTTP ${res.status}，响应不是 JSON` })) };
+  }
+  if (st.auth === 'aksk') throw new Error('AK/SK 鉴权只能在本地模式使用：浏览器无法跨域发送百度签名需要的 x-bce-date 请求头。\n请改用 API Key，或下载本项目运行 node server.js。');
+  if (!up) throw new Error('还没填接入域名');
+  if (!key) throw new Error('还没填 API Key');
+  let res;
+  try {
+    res = await fetch(hostUrl(up) + path, {
+      method, body: body ? JSON.stringify(body) : undefined,
+      headers: { Authorization: `Bearer ${key}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    });
+  } catch { throw unreachable(up); }
+  return { status: res.status, data: await res.json().catch(() => ({ code: 'BadResponse', message: `HTTP ${res.status}，响应不是 JSON（接入域名可能填错了）` })) };
+}
+
+// ================= 接口调用（统一排队，守住 60 次/分钟） =================
+let lastReqAt = 0;
+async function api(path, opts = {}) {
+  for (let attempt = 0; ; attempt++) {
+    const wait = lastReqAt + GAP_MS - Date.now();
+    if (wait > 0) await sleep(wait);
+    lastReqAt = Date.now();
+    const { status, data } = await baiduRequest(opts.method || 'GET', path, opts.body ? JSON.parse(opts.body) : null);
+    const res = { status, ok: status >= 200 && status < 300 };
+    if (res.ok) return data;
+    // 限流：等一分钟再试，最多 3 次
+    if (res.status === 429 && attempt < 3) { setProgressText('触发限流，等待 60 秒后继续…'); await sleep(61000); continue; }
+    // 500 / 503：短暂等待后重试一次
+    if ((res.status === 500 || res.status === 503) && attempt < 1) { await sleep(3000); continue; }
+    throw apiError(res.status, data);
+  }
+}
+function apiError(status, data) {
+  const tips = {
+    401: '凭证无效：Key 不可用 / AK、SK 错误 / 这种鉴权方式没给你们账号开通。',
+    403: '选中的 Key 里有不属于当前账号的。', 429: '超过账号限流（60 次/分钟）。',
+    502: data.code === 'LocalProxyError' ? '本机连不上接入域名：检查域名是否正确、网络是否需要白名单。' : '百度侧数据服务异常，稍后再试。',
+  };
+  const e = new Error(`${data.code || 'Error'}（HTTP ${status}）：${data.message || ''}` +
+    (tips[status] ? `\n${tips[status]}` : '') + (data.request_id && data.request_id !== 'local' ? `\nrequest_id: ${data.request_id}` : ''));
+  e.status = status; e.code = data.code;
+  return e;
+}
+
+function showMsg(id, text) { const el = $(id); el.textContent = text || ''; el.style.display = text ? 'block' : 'none'; }
+function setProgress(done, total) {
+  $('progress').classList.toggle('hidden', !total);
+  if (total) $('progress').firstElementChild.style.transform = `scaleX(${done / total})`;
+}
+function setProgressText(t) { $('refresh').textContent = t; }
+
+// ================= 连接 & 拉 Key 列表 =================
+async function connect() {
+  const persist = $('remember').checked;
+  store.set('ud.remember', persist ? '1' : '', true);
+  store.set('ud.upstream', $('upstream').value.trim(), true);
+  // 密钥：勾了「在本机记住」才保存；不勾则浏览器里一份都不留，只在当前页面内存里
+  for (const id of ['apikey', 'ak', 'sk']) {
+    if (persist) store.set('ud.' + id, $(id).value.trim(), true);
+    else { try { localStorage.removeItem('ud.' + id); sessionStorage.removeItem('ud.' + id); } catch {} }
+  }
+  store.set('ud.auth', st.auth, true);
+  $('connect').disabled = true; showMsg('err', ''); showMsg('warn', '');
+  try {
+    const keys = []; let page = 1, total = Infinity;
+    while (keys.length < total) {
+      setProgressText(`加载 Key 列表 第 ${page} 页…`);
+      const d = await api(`/api/v1/api-keys?page=${page}&page_size=100`);
+      keys.push(...d.list); total = d.pagination.total;
+      if (!d.list.length) break;
+      page++;
+    }
+    st.keys = keys;
+    const saved = store.json('ud.selKeys');
+    const valid = (saved || []).filter((id) => keys.some((k) => k.api_key_id === id));
+    st.selKeys = new Set(valid.length ? valid : keys.map((k) => k.api_key_id));
+    const acct = $('upstream').value.trim() || '(config.json)';
+    $('acctHint').textContent = `已连接 · ${acct === 'demo' ? '演示数据' : acct} · ${keys.length} 把 Key`;
+    // 扫描结果按账号缓存
+    const sc = store.json('ud.scan');
+    st.scan = sc && sc.acct === scanAcct() ? sc : null;
+    $('queryPanel').classList.remove('hidden');
+    renderKeyTable(); renderModels(); renderPlan();
+    await refresh();
+  } catch (e) { showMsg('err', e.message); setProgressText('立即查询'); }
+  finally { $('connect').disabled = false; }
+}
+const scanAcct = () => `${$('upstream').value.trim()}|${st.auth}|${st.auth === 'bearer' ? $('apikey').value.trim().slice(-6) : $('ak').value.trim()}`;
+
+// ================= 扫描：找出真正在用的 Key × 模型 =================
+// 接口每次最多 3 个 Key × 3 个模型，且必须指定模型。全部模型直接查要很多次请求，
+// 所以先用「整段汇总」把近 31 天扫一遍，记下有用量的组合，之后的刷新只查这些。
+function chunk(arr, n) { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; }
+
+async function scan(force) {
+  const keyIds = st.keys.map((k) => k.api_key_id);
+  const fresh = st.scan && Date.now() - st.scan.at < SCAN_TTL && keyIds.every((id) => id in st.scan.active);
+  if (fresh && !force) return true;
+  const e = now(), s = e - 31 * 86400 + 60;
+  const batches = [];
+  for (const ks of chunk(keyIds, 3)) for (const ms of chunk(ALL_MODEL_NAMES, 3)) batches.push([ks, ms]);
+  const active = Object.fromEntries(keyIds.map((id) => [id, []]));
+  let done = 0; const fails = [];
+  for (const [ks, ms] of batches) {
+    setProgressText(`扫描在用模型 ${done + 1}/${batches.length}…`); setProgress(done, batches.length);
+    try {
+      const d = await api('/api/v1/usage', { method: 'POST', body: JSON.stringify({
+        start_time: s, end_time: e, filters: [{ key: 'api_key_id', value: ks }, { key: 'model', value: ms }] }) });
+      for (const r of d.list) if (!active[r.api_key_id].includes(r.model)) active[r.api_key_id].push(r.model);
+    } catch (err) {
+      if (err.status === 401) throw err;
+      fails.push(err.message.split('\n')[0]);
+    }
+    done++;
+  }
+  setProgress(0, 0);
+  if (fails.length) {
+    showMsg('warn', `扫描时有 ${fails.length}/${batches.length} 次请求失败，在用模型可能不全，可稍后点「重新扫描」。\n首个错误：${fails[0]}`);
+    if (fails.length === batches.length) return false;
+  }
+  st.scan = { acct: scanAcct(), at: Date.now(), from: s, active };
+  // 扫描缓存里带有 Key 的末几位用来区分账号，所以也只在「在本机记住」时落盘
+  if ($('remember').checked) store.set('ud.scan', JSON.stringify(st.scan), true);
+  renderModels(); renderKeyTable();
+  return true;
+}
+
+// ================= 计划：把界面选择翻译成一组合法请求 =================
+function plan() {
+  let s, e;
+  if (st.range === 'custom') {
+    s = fromLocalInput($('cStart').value); e = fromLocalInput($('cEnd').value);
+    if (!(s > 0) || !(e > s)) return { error: '自定义时间：结束要晚于开始' };
+  } else [s, e] = RANGES.find((r) => r.id === st.range).calc(now());
+  const span = e - s;
+  let cost = $('withCost').checked, g = $('gran').value, note = '';
+  if (g === 'auto') g = span <= 3 * 3600 && !cost ? 1 : span <= 7 * 86400 ? 60 : 1440;
+  else g = Number(g);
+  if (span > MAX_SPAN[g]) return { error: `所选粒度最多查 ${SPAN_NAME[g]} 的跨度，请缩短时间范围或换更粗的粒度` };
+  if (g === 1 && cost) { cost = false; note = '分钟粒度接口不支持金额，本次只显示用量。'; }
+  const keys = st.keys.map((k) => k.api_key_id).filter((id) => st.selKeys.has(id));
+  if (!keys.length) return { error: '至少选 1 把 Key' };
+  const models = st.modelMode === 'all' ? ALL_MODEL_NAMES : ALL_MODEL_NAMES.filter((m) => st.selModels.has(m));
+  if (!models.length) return { error: '至少选 1 个模型' };
+
+  // 扫描窗口外的历史区间，在用清单可能不准 → 直接查全部组合
+  const useScan = !!st.scan && s >= st.scan.from - 3600;
+  const pairs = {}; // key -> models
+  for (const k of keys) {
+    const ms = useScan ? models.filter((m) => st.scan.active[k]?.includes(m)) : models;
+    if (ms.length) pairs[k] = ms;
+  }
+  // 模型集合相同的 Key 放一起，每批最多 3 Key × 3 模型；分钟粒度按文档只放 1 Key × 2 模型
+  const [kN, mN] = g === 1 ? [1, 2] : [3, 3];
+  const groups = {};
+  for (const [k, ms] of Object.entries(pairs)) (groups[ms.join(',')] ||= { ms, ks: [] }).ks.push(k);
+  const batches = [];
+  for (const { ms, ks } of Object.values(groups)) for (const kc of chunk(ks, kN)) for (const mc of chunk(ms, mN)) batches.push([kc, mc]);
+  if (!st.scan) note += ' 尚未扫描在用模型，按全部组合查询。';
+  else if (!useScan) note += ' 时间早于在用模型扫描范围，按全部组合查询，请求会多一些。';
+  return { s, e, g, cost, note, batches, keys, models, useScan };
+}
+
+function renderPlan() {
+  if (!st.keys.length) return null;
+  const p = plan();
+  const gName = { 0: '整段汇总', 1: '每分钟', 60: '每小时', 1440: '每天' };
+  if (p.error) { $('planNote').textContent = '⚠ ' + p.error; $('refresh').disabled = true; return p; }
+  const secs = Math.ceil((p.batches.length * GAP_MS) / 1000);
+  $('planNote').textContent =
+    `${fmtTs(p.s, 60)} → ${fmtTs(p.e, 60)}，${gName[p.g]}${p.cost ? '，含金额' : ''}；` +
+    `${p.keys.length} 把 Key × ${st.modelMode === 'all' ? '全部' : p.models.length + ' 个'}模型，` +
+    `需 ${p.batches.length} 次请求（约 ${secs} 秒）。${p.note} 数据有 5–30 分钟写入延迟。`;
+  $('refresh').disabled = st.busy;
+  return p;
+}
+
+// ================= 刷新 =================
+async function refresh(forceScan) {
+  if (st.busy || !st.keys.length) return;
+  st.busy = true; $('refresh').disabled = true; clearTimeout(st.timer); st.nextAt = 0;
+  try {
+    if (st.modelMode === 'all' || forceScan) {
+      const ok = await scan(forceScan);
+      if (!ok) throw new Error('扫描全部失败，请检查连接后重试');
+    }
+    const p = renderPlan();
+    if (p.error) return;
+    const list = []; const fails = [];
+    let resp0 = null;
+    for (let i = 0; i < p.batches.length; i++) {
+      const [ks, ms] = p.batches[i];
+      setProgressText(`查询中 ${i + 1}/${p.batches.length}…`); setProgress(i, p.batches.length);
+      const body = { start_time: p.s, end_time: p.e, include_cost: p.cost,
+        filters: [{ key: 'api_key_id', value: ks }, { key: 'model', value: ms }] };
+      if (p.g) body.granularity = p.g;
+      try {
+        const d = await api('/api/v1/usage', { method: 'POST', body: JSON.stringify(body) });
+        resp0 ||= d; list.push(...d.list);
+      } catch (err) {
+        if (err.status === 401) throw err;
+        fails.push(`${ks.join(',')} × ${ms.join(',')}：${err.message.split('\n')[0]}`);
+      }
+    }
+    setProgress(0, 0);
+    if (!p.batches.length) resp0 = { start_time: p.s, end_time: Math.min(p.e, now()), granularity: p.g || null };
+    if (!resp0) throw new Error(`全部 ${p.batches.length} 次请求都失败了。\n${fails[0] || ''}`);
+    showMsg('err', '');
+    showMsg('warn', fails.length ? `⚠ 数据不完整：${fails.length}/${p.batches.length} 次请求失败，下面的合计偏小。\n` + fails.slice(0, 5).join('\n') : '');
+    st.last = { req: p, resp: { ...resp0, list }, at: Date.now(), partial: fails.length > 0 };
+    render();
+  } catch (e) {
+    showMsg('err', e.message); setProgress(0, 0);
+  } finally {
+    st.busy = false; setProgressText('立即查询'); renderPlan(); schedule();
+  }
+}
+
+function schedule() {
+  clearTimeout(st.timer);
+  const sec = Number($('interval').value);
+  if (!sec || !st.keys.length) { st.nextAt = 0; return; }
+  st.nextAt = Date.now() + sec * 1000;
+  st.timer = setTimeout(() => { if (!document.hidden) refresh(); else st.nextAt = 0; }, sec * 1000);
+}
+setInterval(() => {
+  const sec = Number($('interval').value);
+  $('live').classList.toggle('on', !!(sec && st.nextAt));
+  const last = st.last ? `上次 ${bjClock(st.last.at)}` : '';
+  $('liveText').textContent = st.busy ? '查询中…' : sec && st.nextAt
+    ? `${last} · ${Math.max(0, Math.ceil((st.nextAt - Date.now()) / 1000))} 秒后刷新`
+    : (last || (st.keys.length ? '未开启自动刷新' : '未连接'));
+}, 1000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && st.keys.length && !st.nextAt && !st.busy && Number($('interval').value)) refresh();
+});
+
+// ================= 筛选区渲染 =================
+function keyStatus(k) { return !k.is_enabled ? ['bad', '已禁用'] : k.is_expired ? ['warn', '已过期'] : ['ok', '可用']; }
+function matchPreview(preview, plain) {
+  const m = /^(.*?)\*+(.*)$/.exec(preview || '');
+  return !!m && plain.startsWith(m[1]) && plain.endsWith(m[2]);
+}
+function renderKeyTable() {
+  const find = $('keyFind').value.trim();
+  $('keyTabN').textContent = `${st.selKeys.size}/${st.keys.length}`;
+  const head = `<tr><th class="l" style="width:28px"></th><th class="l">名称</th><th class="l">api_key_id</th><th class="l">预览</th><th class="l">状态</th><th>创建</th><th>过期</th><th class="l">近 31 天用过的模型</th></tr>`;
+  const rows = st.keys.map((k) => {
+    const [cls, txt] = keyStatus(k);
+    const hit = find && matchPreview(k.key_preview, find);
+    const act = st.scan?.active[k.api_key_id];
+    return `<tr class="${hit ? 'hl' : ''}"><td class="l"><input type="checkbox" data-k="${esc(k.api_key_id)}" ${st.selKeys.has(k.api_key_id) ? 'checked' : ''}></td>` +
+      `<td class="l"><b>${esc(k.api_key_name || '(未命名)')}</b></td><td class="l muted">${esc(k.api_key_id)}</td>` +
+      `<td class="l muted small">${esc(k.key_preview)}</td><td class="l"><span class="badge ${cls}">${txt}</span></td>` +
+      `<td>${fmtDate(k.created_at)}</td><td>${k.expired_at == null ? '<span class="muted">永不</span>' : fmtDate(k.expired_at)}</td>` +
+      `<td class="l small muted">${act ? (act.length ? esc(act.join('、')) : '无') : '—'}</td></tr>`;
+  });
+  $('keyTable').innerHTML = head + rows.join('');
+  if (find && !st.keys.some((k) => matchPreview(k.key_preview, find))) $('keyTable').insertAdjacentHTML('beforeend', `<tr><td colspan="8" class="l muted">没有匹配的 Key（已删除的 Key 不会列出）</td></tr>`);
+  $('keyTable').querySelectorAll('input[data-k]').forEach((cb) => cb.onchange = () => {
+    cb.checked ? st.selKeys.add(cb.dataset.k) : st.selKeys.delete(cb.dataset.k);
+    saveSel(); $('keyTabN').textContent = `${st.selKeys.size}/${st.keys.length}`; renderPlan();
+  });
+}
+function saveSel() {
+  store.set('ud.selKeys', JSON.stringify([...st.selKeys]), true);
+  store.set('ud.selModels', JSON.stringify([...st.selModels]), true);
+  store.set('ud.modelMode', st.modelMode, true);
+}
+
+function renderModels() {
+  const used = new Set(st.scan ? Object.values(st.scan.active).flat() : []);
+  $('modelTabN').textContent = st.modelMode === 'all' ? '全部' : `${st.selModels.size} 个`;
+  $('scanInfo').textContent = st.scan ? `在用模型 ${used.size} 个（${bjClock(st.scan.at)} 扫描）` : '尚未扫描';
+  $('modelPick').classList.toggle('hidden', st.modelMode !== 'pick');
+  $('modelAllNote').classList.toggle('hidden', st.modelMode !== 'all');
+  document.querySelectorAll('#modelMode button').forEach((b) => b.classList.toggle('on', b.dataset.m === st.modelMode));
+  if (st.modelMode !== 'pick') return;
+  const q = $('modelSearch').value.trim().toLowerCase();
+  let html = '', grp = '', inUsed = true;
+  // 在用的排在前面
+  const order = [...MODELS].sort((a, b) => used.has(b[2]) - used.has(a[2]));
+  if (used.size) html += `<div class="grp">近 31 天在用</div>`;
+  for (const [g, ep, name] of order) {
+    if (q && !name.toLowerCase().includes(q) && !ep.toLowerCase().includes(q)) continue;
+    if (inUsed && !used.has(name)) { inUsed = false; grp = ''; }
+    if (!inUsed && g !== grp) { grp = g; html += `<div class="grp">${esc(g)}</div>`; }
+    html += `<span class="chip ${st.selModels.has(name) ? 'on' : ''}" data-m="${esc(name)}" title="端点编码：${esc(ep)}">${esc(name)}</span>`;
+  }
+  $('modelList').innerHTML = `<div class="row" style="margin-bottom:6px"><button class="link" id="mUsed">选在用的</button><button class="link" id="mNone">清空</button></div>` + html;
+  $('modelList').querySelectorAll('.chip').forEach((c) => c.onclick = () => {
+    const m = c.dataset.m; st.selModels.has(m) ? st.selModels.delete(m) : st.selModels.add(m);
+    c.classList.toggle('on'); saveSel(); $('modelTabN').textContent = `${st.selModels.size} 个`; renderPlan();
+  });
+  $('mUsed').onclick = () => { st.selModels = new Set(used); saveSel(); renderModels(); renderPlan(); };
+  $('mNone').onclick = () => { st.selModels = new Set(); saveSel(); renderModels(); renderPlan(); };
+}
+
+function renderRanges() {
+  $('ranges').innerHTML = '';
+  for (const r of RANGES) {
+    const b = document.createElement('button');
+    b.textContent = r.name; b.className = st.range === r.id ? 'on' : '';
+    b.onclick = () => {
+      st.range = r.id;
+      if (r.id === 'custom' && !$('cStart').value) {
+        const n = now(); $('cStart').value = toLocalInput(bjDayStart(n) - 86400); $('cEnd').value = toLocalInput(bjDayStart(n));
+      }
+      $('customRange').classList.toggle('hidden', r.id !== 'custom');
+      renderRanges(); renderPlan();
+      if (r.id !== 'custom') refresh();
+    };
+    $('ranges').appendChild(b);
+  }
+}
+
+// ================= 汇总 =================
+const nf = new Intl.NumberFormat('zh-CN');
+const fmtN = (n) => nf.format(n);
+const fmtBig = (n) => n >= 1e8 ? (n / 1e8).toFixed(2) + ' 亿' : n >= 1e4 ? (n / 1e4).toFixed(1) + ' 万' : fmtN(n);
+// 金额最多 8 位小数：每次累加后按 8 位小数取整，避免浮点误差累积
+const addC = (a, b) => Math.round(((a || 0) + b) * 1e8) / 1e8;
+const fmtCost = (c, cur) => (cur === 'USD' ? '$' : '¥') + c.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: c < 1 ? 4 : 2 });
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const keyName = (id) => st.keys.find((k) => k.api_key_id === id)?.api_key_name || id;
+
+function newAcc() { return { cats: {}, counts: {}, cost: {}, tok: 0 }; }
+function addTo(acc, name, value, cost, cur) {
+  const c = catOf(name);
+  if (c) { acc.cats[c.id] = (acc.cats[c.id] || 0) + value; acc.tok += value; }
+  else acc.counts[name] = (acc.counts[name] || 0) + value;
+  // 只有带 currency 的行才计金额；不同币种绝不相加
+  if (cost != null && cur) acc.cost[cur] = addC(acc.cost[cur], cost);
+}
+function aggregate(list) {
+  const total = newAcc(), byKey = {}, byModel = {}, byKM = {}, items = {}, buckets = new Map();
+  const currencies = new Set();
+  for (const row of list) {
+    const cur = row.currency; if (cur) currencies.add(cur);
+    const tgt = [total, byKey[row.api_key_id] ||= newAcc(), byModel[row.model] ||= newAcc(), byKM[row.api_key_id + '\u0001' + row.model] ||= newAcc()];
+    let b = null;
+    if (row.ts != null) { if (!buckets.has(row.ts)) buckets.set(row.ts, { cat: newAcc(), key: {}, model: {} }); b = buckets.get(row.ts); }
+    for (const [name, { value, cost }] of Object.entries(row.bill_items || {})) {
+      for (const a of tgt) addTo(a, name, value, cost, cur);
+      const it = items[name] ||= { value: 0, cost: {} };
+      it.value += value; if (cost != null && cur) it.cost[cur] = addC(it.cost[cur], cost);
+      if (b) {
+        addTo(b.cat, name, value, cost, cur);
+        addTo(b.key[row.api_key_id] ||= newAcc(), name, value, cost, cur);
+        addTo(b.model[row.model] ||= newAcc(), name, value, cost, cur);
+      }
+    }
+  }
+  return { total, byKey, byModel, byKM, items, buckets, currencies: [...currencies].sort((a, b) => (a === 'RMB' ? -1 : b === 'RMB' ? 1 : 0)) };
+}
+
+// ================= 结果渲染 =================
+let chart;
+function render() {
+  const { req, resp, partial } = st.last;
+  const agg = st.agg = aggregate(resp.list);
+  $('results').classList.remove('hidden');
+  const T = agg.total, input = T.tok - (T.cats.out || 0);
+  const kpis = [
+    ['总 tokens', fmtBig(T.tok), `${Object.keys(agg.byKey).length} 把 Key · ${Object.keys(agg.byModel).length} 个模型有用量`],
+    ['输出 tokens', fmtBig(T.cats.out || 0), T.tok ? `占 ${(100 * (T.cats.out || 0) / T.tok).toFixed(1)}%` : ''],
+    ['输入 tokens', fmtBig(input), '含缓存命中 / 未命中 / 写入'],
+    ['缓存命中率', input ? ((100 * (T.cats.hit || 0)) / input).toFixed(1) + '%' : '—', '缓存命中 ÷ 全部输入'],
+  ];
+  if (req.cost) {
+    if (!agg.currencies.length) kpis.push(['金额', '—', '此区间暂无金额数据']);
+    for (const cur of agg.currencies) kpis.push([`金额 · ${cur}`, fmtCost(T.cost[cur] || 0, cur), cur === 'USD' ? '与人民币分开统计，不可相加' : '仅供自查，以正式账单为准']);
+  }
+  if (T.counts.web_search_requests) kpis.push(['联网搜索', fmtN(T.counts.web_search_requests) + ' 次', 'web_search_requests']);
+  $('kpis').innerHTML = kpis.map(([k, v, s]) => `<div class="kpi"><div class="k">${k}${partial ? ' <span class="badge warn">不完整</span>' : ''}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+  renderChart(); renderTable();
+  $('footNote').textContent = `服务端实际区间：${fmtTs(resp.start_time, 60)} → ${fmtTs(resp.end_time, 60)}（北京时间），共 ${resp.list.length} 行原始数据。` +
+    '用量用于自查分析，与正式账单可能有细微差异。';
+}
+
+function seriesFor(dim, metric) {
+  const { agg } = st; const { resp } = st.last;
+  const g = resp.granularity, step = g * 60, off = g === 1440 ? 57600 : 0;
+  const ts = [];
+  for (let t = Math.floor((resp.start_time - off) / step) * step + off; t < resp.end_time; t += step) ts.push(t);
+  const val = (acc, id) => !acc ? 0 : metric === 'tokens' ? (id ? acc.cats[id] || 0 : acc.tok) : acc.cost[metric] || 0;
+  let defs;
+  if (dim === 'cat') {
+    defs = (metric === 'tokens' ? CATS.filter((c) => agg.total.cats[c.id]) : [{ id: null, name: `金额 ${metric}` }])
+      .map((c, i) => ({ label: c.name, get: (b) => val(b?.cat, c.id), color: PALETTE[i] }));
+  } else {
+    const src = dim === 'key' ? agg.byKey : agg.byModel;
+    const ranked = Object.entries(src).map(([id, a]) => [id, val(a)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([id]) => id);
+    const top = ranked.slice(0, 8), rest = ranked.slice(8);
+    defs = top.map((id, i) => ({ label: dim === 'key' ? keyName(id) : id, get: (b) => val(b?.[dim][id]), color: PALETTE[i] }));
+    if (rest.length) defs.push({ label: `其他 ${rest.length} 个`, get: (b) => rest.reduce((s, id) => s + val(b?.[dim][id]), 0), color: OTHER_COLOR });
+  }
+  return { labels: ts.map((t) => fmtTs(t, g)), datasets: defs.map((d) => ({
+    label: d.label, backgroundColor: css(d.color), stack: 's', data: ts.map((t) => d.get(agg.buckets.get(t))),
+  })) };
+}
+
+function renderChart() {
+  const g = st.last.resp.granularity;
+  $('chartPanel').classList.toggle('hidden', !g);
+  if (!g) return;
+  const metrics = [['tokens', 'Token']].concat(st.last.req.cost ? st.agg.currencies.map((c) => [c, c === 'RMB' ? '金额 ¥' : '金额 $']) : []);
+  if (!metrics.some((m) => m[0] === st.chartMetric)) st.chartMetric = 'tokens';
+  segButtons('chartDim', [['cat', '按类别'], ['model', '按模型'], ['key', '按 Key']], st.chartDim, (v) => { st.chartDim = v; renderChart(); });
+  segButtons('chartMetric', metrics, st.chartMetric, (v) => { st.chartMetric = v; renderChart(); });
+  const data = seriesFor(st.chartDim, st.chartMetric);
+  const isCost = st.chartMetric !== 'tokens';
+  const grid = css('--line'), tick = css('--muted');
+  if (chart) chart.destroy();
+  chart = new Chart($('chart'), {
+    type: 'bar', data,
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: tick, boxWidth: 10, boxHeight: 10 } },
+        tooltip: {
+          filter: (i) => i.raw > 0,
+          callbacks: { label: (c) => `${c.dataset.label}：${isCost ? fmtCost(c.raw, st.chartMetric) : fmtN(c.raw)}` },
+        },
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { color: tick, maxRotation: 0, autoSkipPadding: 12 } },
+        y: { stacked: true, grid: { color: grid }, ticks: { color: tick, callback: (v) => isCost ? v : fmtBig(v) } },
+      },
+    },
+  });
+}
+function segButtons(id, opts, cur, on) {
+  $(id).innerHTML = '';
+  for (const [v, name] of opts) {
+    const b = document.createElement('button'); b.textContent = name; b.className = v === cur ? 'on' : '';
+    b.onclick = () => on(v); $(id).appendChild(b);
+  }
+}
+
+function renderTable() {
+  const { agg } = st; const curs = st.last.req.cost ? agg.currencies : [];
+  const tbl = st.tbl;
+  document.querySelectorAll('#tblTabs button[data-t]').forEach((b) => b.classList.toggle('on', b.dataset.t === tbl));
+  if (tbl === 'item') return renderItemTable(curs);
+  const cats = CATS.filter((c) => agg.total.cats[c.id]);
+  const src = tbl === 'key' ? agg.byKey : tbl === 'model' ? agg.byModel : agg.byKM;
+  const rows = Object.entries(src).map(([id, a]) => ({ id, a }));
+  const sortKey = st.sort || (curs[0] ? 'cost:' + curs[0] : 'tok');
+  const sv = (r) => sortKey === 'tok' ? r.a.tok : sortKey.startsWith('cost:') ? (r.a.cost[sortKey.slice(5)] || 0) : (r.a.cats[sortKey] || 0);
+  rows.sort((x, y) => sv(y) - sv(x) || x.id.localeCompare(y.id));
+  const maxTok = Math.max(1, ...rows.map((r) => r.a.tok));
+  const label = (id) => {
+    if (tbl === 'key') return `<b>${esc(keyName(id))}</b> <span class="muted small">${esc(id)}</span>`;
+    if (tbl === 'model') { const ep = MODEL_BY_NAME[id]?.ep; return `<b>${esc(id)}</b> <span class="muted small">${ep && ep !== id ? esc(ep) : ''}</span>`; }
+    const [k, m] = id.split('\u0001'); return `${esc(keyName(k))} <span class="muted small">${esc(k)}</span> · <b>${esc(m)}</b>`;
+  };
+  const th = (k, name) => `<th class="sort" data-s="${k}">${name}${sortKey === k ? ' ↓' : ''}</th>`;
+  const head = `<tr><th class="l">${tbl === 'key' ? 'API Key' : tbl === 'model' ? '模型' : 'Key · 模型'}</th>` +
+    cats.map((c) => th(c.id, c.name)).join('') + th('tok', '合计 tokens') + `<th class="l" style="width:110px">占比</th>` +
+    `<th>缓存命中率</th>` + curs.map((c) => th('cost:' + c, '金额 ' + c)).join('') + '</tr>';
+  const body = rows.map(({ id, a }) => {
+    const inp = a.tok - (a.cats.out || 0);
+    return `<tr><td class="l">${label(id)}</td>` + cats.map((c) => `<td>${fmtN(a.cats[c.id] || 0)}</td>`).join('') +
+      `<td><b>${fmtN(a.tok)}</b></td><td class="l"><div class="bar" style="width:${(100 * a.tok / maxTok).toFixed(1)}%"></div></td>` +
+      `<td>${inp ? ((100 * (a.cats.hit || 0)) / inp).toFixed(1) + '%' : '—'}</td>` +
+      curs.map((c) => `<td>${a.cost[c] != null ? fmtCost(a.cost[c], c) : '—'}</td>`).join('') + '</tr>';
+  }).join('');
+  const T = agg.total;
+  const foot = rows.length > 1 ? `<tr class="tot"><td class="l">合计（${rows.length}）</td>` + cats.map((c) => `<td>${fmtN(T.cats[c.id] || 0)}</td>`).join('') +
+    `<td>${fmtN(T.tok)}</td><td></td><td></td>` + curs.map((c) => `<td>${fmtCost(T.cost[c] || 0, c)}</td>`).join('') + '</tr>' : '';
+  $('tbl').innerHTML = head + (body || `<tr><td class="l muted" colspan="12">这段时间所选范围没有用量</td></tr>`) + foot;
+  $('tbl').querySelectorAll('th.sort').forEach((h) => h.onclick = () => { st.sort = h.dataset.s; renderTable(); });
+}
+function renderItemTable(curs) {
+  const names = Object.keys(st.agg.items).sort();
+  const head = `<tr><th class="l">计费项</th><th class="l">归类</th><th>用量</th><th class="l">单位</th>${curs.map((c) => `<th>金额 ${c}</th>`).join('')}</tr>`;
+  const rows = names.map((n) => {
+    const it = st.agg.items[n], c = catOf(n);
+    const unit = COUNT_ITEMS[n] ? 'count' : /tokens/.test(n) ? 'token' : '待向百度确认';
+    return `<tr><td class="l">${esc(n)}</td><td class="l muted">${c ? c.name : '次数'}</td><td>${fmtN(it.value)}</td><td class="l muted">${unit}</td>` +
+      curs.map((cu) => `<td>${it.cost[cu] != null ? fmtCost(it.cost[cu], cu) : '—'}</td>`).join('') + '</tr>';
+  });
+  $('tbl').innerHTML = head + (rows.join('') || `<tr><td colspan="6" class="l muted">无数据</td></tr>`);
+}
+
+function exportCsv() {
+  if (!st.last) return;
+  const items = new Set(); for (const r of st.last.resp.list) Object.keys(r.bill_items || {}).forEach((k) => items.add(k));
+  const cols = [...items].sort();
+  const q = (s) => `"${String(s).replace(/"/g, '""')}"`;
+  const lines = [['bucket_start_bj', 'ts', 'api_key_id', 'api_key_name', 'model', 'model_endpoint', 'currency', ...cols.flatMap((c) => [c, c + '_cost'])].join(',')];
+  for (const r of st.last.resp.list) {
+    lines.push([r.ts == null ? '' : fmtTs(r.ts, 60), r.ts ?? '', r.api_key_id, q(keyName(r.api_key_id)), r.model, r.model_endpoint, r.currency || '',
+      ...cols.flatMap((c) => [r.bill_items[c]?.value ?? '', r.bill_items[c]?.cost ?? ''])].join(','));
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
+  a.download = `usage_${fmtDate(st.last.resp.start_time)}_${fmtDate(st.last.resp.end_time)}.csv`;
+  a.click();
+}
+
+// ================= 初始化 =================
+function setAuth(m) {
+  st.auth = m;
+  document.querySelectorAll('#authMode button').forEach((b) => b.classList.toggle('on', b.dataset.m === m));
+  document.querySelectorAll('.auth-bearer').forEach((el) => el.classList.toggle('hidden', m !== 'bearer'));
+  document.querySelectorAll('.auth-aksk').forEach((el) => el.classList.toggle('hidden', m !== 'aksk'));
+}
+(async function init() {
+  $('remember').checked = store.get('ud.remember') === '1';
+  for (const id of ['upstream', 'apikey', 'ak', 'sk']) $(id).value = store.get('ud.' + id) || '';
+  setAuth(store.get('ud.auth') || 'bearer');
+  st.modelMode = store.get('ud.modelMode') || 'all';
+  const sm = store.json('ud.selModels'); if (Array.isArray(sm)) st.selModels = new Set(sm.filter((m) => MODEL_BY_NAME[m]));
+  await modeReady;
+  const cfg = CFG;
+  $('modeBadge').textContent = MODE === 'proxy' ? '本地模式 · 经本机转发' : '网页模式 · 浏览器直连';
+  $('modeBadge').title = MODE === 'proxy'
+    ? '页面由本机 server.js 提供，请求经本机转发；支持百度 AK/SK 和未开跨域的 new-api。'
+    : '请求由你的浏览器直接发往百度 / new-api，密钥不经过任何第三方服务器。';
+  if (MODE === 'direct') $('cfgHint').textContent = '密钥只在你的浏览器和百度之间传输，不经过任何第三方服务器。AK/SK 方式需要本地模式。';
+  if (cfg.upstream && !$('upstream').value) $('upstream').value = cfg.upstream;
+  if (cfg.auth && !store.get('ud.auth')) setAuth(cfg.auth);
+  if (cfg.hasApiKey || cfg.hasAkSk) {
+    $('cfgHint').textContent = `已从 config.json 读取${cfg.hasApiKey ? ' API Key' : ''}${cfg.hasAkSk ? ' AK/SK' : ''}，对应输入框可以留空。` + $('cfgHint').textContent;
+  }
+  renderRanges();
+  document.querySelectorAll('#authMode button').forEach((b) => b.onclick = () => setAuth(b.dataset.m));
+  document.querySelectorAll('#filterTabs button').forEach((b) => b.onclick = () => {
+    document.querySelectorAll('#filterTabs button').forEach((x) => x.classList.toggle('on', x === b));
+    $('tab-keys').classList.toggle('hidden', b.dataset.t !== 'keys'); $('tab-models').classList.toggle('hidden', b.dataset.t !== 'models');
+  });
+  document.querySelectorAll('#modelMode button').forEach((b) => b.onclick = () => { st.modelMode = b.dataset.m; saveSel(); renderModels(); renderPlan(); });
+  document.querySelectorAll('#tblTabs button[data-t]').forEach((b) => b.onclick = () => { st.tbl = b.dataset.t; st.sort = null; renderTable(); });
+  $('keysAll').onclick = () => { st.selKeys = new Set(st.keys.map((k) => k.api_key_id)); saveSel(); renderKeyTable(); renderPlan(); };
+  $('keysUsable').onclick = () => { st.selKeys = new Set(st.keys.filter((k) => k.is_enabled && !k.is_expired).map((k) => k.api_key_id)); saveSel(); renderKeyTable(); renderPlan(); };
+  $('keysNone').onclick = () => { st.selKeys = new Set(); saveSel(); renderKeyTable(); renderPlan(); };
+  $('keyFind').oninput = renderKeyTable;
+  $('connect').onclick = connect;
+  $('refresh').onclick = () => refresh();
+  $('rescan').onclick = () => refresh(true);
+  $('interval').onchange = schedule;
+  for (const id of ['gran', 'withCost', 'cStart', 'cEnd']) $(id).onchange = renderPlan;
+  $('modelSearch').oninput = renderModels;
+  $('csv').onclick = exportCsv;
+  const hasCreds = st.auth === 'bearer' ? ($('apikey').value || cfg.hasApiKey) : (($('ak').value && $('sk').value) || cfg.hasAkSk);
+  if ($('upstream').value && hasCreds) connect();
+})();
+</script>
+
+<script>
+// ================= 客户用量（new-api） =================
+// 数据来源（均为 new-api 管理员只读接口，经本机 server.js 转发）：
+//   /api/status        → quota_per_unit（多少额度 = 1 美元）、usd_exchange_rate
+//   /api/user/         → 客户列表（显示名、分组、剩余额度、状态）
+//   /api/data/users    → 每个客户每小时的 调用次数 / token / 额度（完整）
+//   /api/data/         → 每个模型每小时的 调用次数 / token / 额度
+//   /api/data/flow     → 区间内 客户 × 分组 × 模型 × 渠道 汇总（只含有分组信息的记录）
+//   /api/log/stat      → 最近 60 秒的 RPM / TPM
+const na = { status: null, users: {}, range: 'today', last: null, chartDim: 'user', chartMetric: 'usd', tbl: 'user', busy: false, timer: null, nextAt: 0 };
+const NA_RANGES = RANGES.filter((r) => r.id !== 'custom');
+
+async function naApi(path) {
+  const base = $('naBase').value.trim(), token = $('naToken').value.trim(), user = $('naUser').value.trim();
+  let status, d;
+  if (base === 'demo') {
+    const u = new URL(path, 'https://x');
+    ({ status, data: d } = Demo.newapi(u.pathname, u.searchParams, token));
+  } else if (MODE === 'proxy') {
+    const headers = { 'X-Newapi-Base': base };
+    if (token) headers['X-Newapi-Token'] = token;
+    if (user) headers['X-Newapi-User'] = user;
+    const res = await fetch('/newapi' + path, { headers });
+    status = res.status;
+    d = await res.json().catch(() => ({ success: false, message: `HTTP ${res.status}，返回的不是 JSON（地址可能填错了）` }));
+  } else {
+    if (!base) throw new Error('还没填 new-api 地址');
+    if (!token && path !== '/api/status') throw new Error('还没填 new-api 访问令牌');
+    const headers = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (user) headers['New-Api-User'] = user;
+    let res;
+    try { res = await fetch(hostUrl(base) + path, { headers }); }
+    catch { $('naCorsHelp').open = true; $('naCorsHelp').classList.remove('hidden'); throw unreachable(base); }
+    status = res.status;
+    d = await res.json().catch(() => ({ success: false, message: `HTTP ${res.status}，返回的不是 JSON（地址可能填错了）` }));
+  }
+  if (status >= 200 && status < 300 && d.success !== false) return d.data;
+  const msg = d.message || d.error?.message || `HTTP ${status}`;
+  const res = { status };
+  const tip = res.status === 401 ? '\n令牌无效或已过期；旧版 new-api 还需要填「用户 ID」。'
+    : res.status === 403 ? '\n权限不足：需要管理员账号，令牌需勾选 log:read / user:read。'
+    : res.status === 404 ? '\n接口不存在：new-api 版本可能较旧。' : '';
+  const e = new Error(`${msg}${tip}`); e.status = res.status; throw e;
+}
+
+const naUsd = (quota) => quota / (na.status?.quota_per_unit || 500000);
+const naFmtUsd = (q) => '$' + naUsd(q).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const naFmtCny = (q) => '≈¥' + (naUsd(q) * (na.status?.usd_exchange_rate || 7.3)).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+const naName = (username) => na.users[username]?.display_name || username || '(未知)';
+
+async function naConnect() {
+  const persist = $('naRemember').checked;
+  store.set('ud.naBase', $('naBase').value.trim(), true);
+  store.set('ud.naUser', $('naUser').value.trim(), true);
+  store.set('ud.naRemember', persist ? '1' : '', true);
+  if (persist) store.set('ud.naToken', $('naToken').value.trim(), true);
+  else { try { localStorage.removeItem('ud.naToken'); sessionStorage.removeItem('ud.naToken'); } catch {} }
+  $('naConnect').disabled = true; showMsg('naErr', ''); showMsg('naWarn', '');
+  try {
+    na.status = await naApi('/api/status');
+    $('naQuery').classList.remove('hidden');
+    renderNaRanges();
+    await naRefresh();
+  } catch (e) { showMsg('naErr', e.message); }
+  finally { $('naConnect').disabled = false; }
+}
+
+function renderNaRanges() {
+  segButtons('naRanges', NA_RANGES.map((r) => [r.id, r.name]), na.range, (v) => { na.range = v; renderNaRanges(); naRefresh(); });
+}
+
+async function naRefresh() {
+  if (na.busy || !na.status) return;
+  na.busy = true; $('naRefresh').disabled = true; $('naRefresh').textContent = '查询中…'; clearTimeout(na.timer);
+  const [s, e] = NA_RANGES.find((r) => r.id === na.range).calc(now());
+  const q = `start_timestamp=${s}&end_timestamp=${e}`;
+  try {
+    const n = now();
+    const [byUserHour, byModelHour, stat, spend7] = await Promise.all([
+      naApi(`/api/data/users?${q}`), naApi(`/api/data/?${q}`), naApi(`/api/log/stat?${q}`).catch(() => null),
+      naApi(`/api/data/users?start_timestamp=${n - 7 * 86400}&end_timestamp=${n}`).catch(() => null),
+    ]);
+    // 客户列表每次刷新都重新拉：余额是实时变化的
+    na.users = {}; na.usersErr = null;
+    try {
+      for (let p = 1; p < 200; p++) {
+        const d = await naApi(`/api/user/?p=${p}&page_size=100`);
+        for (const u of d.items || []) na.users[u.username] = u;
+        if (!d.items?.length || p * 100 >= d.total) break;
+      }
+    } catch (err) { na.usersErr = err.message.split('\n')[0]; }
+    let flow = null, flowErr = null;
+    try { flow = await naApi(`/api/data/flow?${q}`); } catch (err) { flowErr = err; }
+    // 旧版没有 /api/data/flow：逐个客户拉 /api/data/?username= 拼出「客户 × 模型」
+    if (!flow && flowErr?.status === 404) {
+      flow = [];
+      const names = [...new Set((byUserHour || []).map((r) => r.username))];
+      for (const u of names) {
+        for (const r of (await naApi(`/api/data/?${q}&username=${encodeURIComponent(u)}`)) || []) {
+          flow.push({ username: u, model_name: r.model_name, use_group: '', channel_name: '', count: r.count, quota: r.quota, token_used: r.token_used });
+        }
+      }
+    }
+    na.last = { s, e, at: Date.now(), byUserHour: byUserHour || [], byModelHour: byModelHour || [], flow: flow || [], stat, spend7 };
+    const warns = [];
+    if (na.usersErr) warns.push(`读不到客户列表（${na.usersErr}），客户只显示用户名，也无法计算余额。`);
+    if (!spend7) warns.push('读不到近 7 天消耗，无法估算客户余额还能用几天。');
+    if (!flow) warns.push(`读不到「客户 × 模型」明细（${flowErr.message.split('\n')[0]}）。`);
+    else {
+      const tq = na.last.byUserHour.reduce((a, r) => a + r.quota, 0), fq = na.last.flow.reduce((a, r) => a + r.quota, 0);
+      if (tq && fq < tq * 0.99) warns.push(`「客户 × 模型 / 渠道」明细只覆盖了 ${(100 * fq / tq).toFixed(1)}% 的消费：new-api 升级前的旧记录缺少分组信息，不计入明细；客户总额不受影响。`);
+    }
+    showMsg('naErr', ''); showMsg('naWarn', warns.join('\n'));
+    renderNa();
+  } catch (err) { showMsg('naErr', err.message); }
+  finally {
+    na.busy = false; $('naRefresh').disabled = false; $('naRefresh').textContent = '立即查询';
+    naSchedule(); naNote();
+  }
+}
+
+function naSchedule() {
+  clearTimeout(na.timer); na.nextAt = 0;
+  const sec = Number($('interval').value);
+  if (!sec || !na.status) return;
+  na.nextAt = Date.now() + sec * 1000;
+  na.timer = setTimeout(() => { if (!document.hidden) naRefresh(); else na.nextAt = 0; }, sec * 1000);
+}
+function naNote() {
+  if (!na.last) return;
+  const sec = Number($('interval').value);
+  $('naNote').textContent = `${fmtTs(na.last.s, 60)} → ${fmtTs(na.last.e, 60)}；上次刷新 ${bjClock(na.last.at)}` +
+    (sec && na.nextAt ? `，${Math.max(0, Math.ceil((na.nextAt - Date.now()) / 1000))} 秒后自动刷新` : '') +
+    `。new-api 统计数据约每 5 分钟落库一次，金额按 new-api 的扣费额度换算（${na.status.quota_per_unit} 额度 = $1）。`;
+}
+setInterval(() => { if (na.last && !na.busy) naNote(); }, 1000);
+
+// ---------- 汇总 ----------
+function naGroup(rows, keyFn) {
+  const m = new Map();
+  for (const r of rows) {
+    const k = keyFn(r);
+    const a = m.get(k) || { key: k, count: 0, quota: 0, tok: 0 };
+    a.count += r.count || 0; a.quota += r.quota || 0; a.tok += r.token_used || 0; m.set(k, a);
+  }
+  return [...m.values()].sort((a, b) => b.quota - a.quota || b.tok - a.tok);
+}
+function naMatch(text) { const f = $('naFind').value.trim().toLowerCase(); return !f || String(text).toLowerCase().includes(f); }
+
+// 客户余额状况：管理员账号不算客户；按近 7 天日均消耗估算还能用几天
+function naBalances() {
+  const L = na.last;
+  if (!L || na.usersErr) return null;
+  const spend = {};
+  for (const r of L.spend7 || []) spend[r.username] = (spend[r.username] || 0) + r.quota;
+  const lowUsd = Number($('naLowUsd').value) || 0, lowDays = Number($('naLowDays').value) || 0;
+  return Object.values(na.users).filter((u) => (u.role || 1) < 10).map((u) => {
+    const perDay = (spend[u.username] || 0) / 7;
+    const days = perDay > 0 ? u.quota / perDay : Infinity;
+    const low = u.status === 1 && perDay > 0 && (naUsd(u.quota) < lowUsd || days < lowDays);
+    return { key: u.username, u, perDay, days, low };
+  }).sort((a, b) => b.low - a.low || a.days - b.days || a.u.quota - b.u.quota);
+}
+const fmtDays = (d) => d === Infinity ? '—' : d < 1 ? '不到 1 天' : d < 10 ? d.toFixed(1) + ' 天' : Math.round(d) + ' 天';
+
+function renderNaAlert() {
+  const bal = naBalances();
+  const low = (bal || []).filter((b) => b.low);
+  showMsg('naAlert', low.length
+    ? `⚠ ${low.length} 个客户余额偏低：` + low.slice(0, 6).map((b) => `${naName(b.key)}（剩 ${naFmtUsd(b.u.quota)}，约 ${fmtDays(b.days)}）`).join('、') +
+      (low.length > 6 ? ` 等` : '') + '。详见下方「客户余额」。'
+    : '');
+}
+
+function renderNa() {
+  const L = na.last;
+  $('naResults').classList.remove('hidden');
+  const users = naGroup(L.byUserHour, (r) => r.username);
+  const models = naGroup(L.byModelHour, (r) => r.model_name);
+  const T = users.reduce((a, u) => ({ count: a.count + u.count, quota: a.quota + u.quota, tok: a.tok + u.tok }), { count: 0, quota: 0, tok: 0 });
+  const kpis = [
+    ['客户消费', naFmtUsd(T.quota), naFmtCny(T.quota) + `（汇率 ${na.status.usd_exchange_rate || 7.3}）`],
+    ['调用次数', fmtN(T.count), `${users.length} 个客户有调用`],
+    ['Token', fmtBig(T.tok), `${models.length} 个模型被使用`],
+    ['单次平均', T.count ? fmtBig(Math.round(T.tok / T.count)) + ' token' : '—', T.count ? naFmtUsd(T.quota / T.count) + ' / 次' : ''],
+  ];
+  const bal = naBalances();
+  if (bal) {
+    const live = bal.filter((b) => b.u.status === 1), lowN = bal.filter((b) => b.low).length;
+    kpis.splice(1, 0, ['客户余额合计', naFmtUsd(live.reduce((a, b) => a + b.u.quota, 0)),
+      `${live.length} 个正常客户 · ` + (lowN ? `<span class="badge bad">${lowN} 个余额偏低</span>` : '暂无低余额')]);
+  } else kpis.splice(1, 0, ['客户余额合计', '—', na.usersErr ? '令牌缺少「用户读取」权限' : '']);
+  renderNaAlert();
+  if (L.stat) kpis.push(['当前速率', `${fmtN(L.stat.rpm || 0)} 次/分`, `${fmtBig(L.stat.tpm || 0)} token/分（最近 60 秒）`]);
+  $('naKpis').innerHTML = kpis.map(([k, v, s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+  renderNaChart(); renderNaTable();
+  $('naFoot').textContent = `客户合计来自 /api/data/users；「客户 × 模型」「按渠道」来自 /api/data/flow。消费金额是 new-api 按你们设置的倍率向客户扣的额度，不是百度的成本。`;
+}
+
+function renderNaChart() {
+  const L = na.last;
+  segButtons('naChartDim', [['user', '按客户'], ['model', '按模型']], na.chartDim, (v) => { na.chartDim = v; renderNaChart(); });
+  segButtons('naChartMetric', [['usd', '消费 $'], ['tok', 'Token'], ['count', '次数']], na.chartMetric, (v) => { na.chartMetric = v; renderNaChart(); });
+  const daily = L.e - L.s > 2 * 86400;
+  const bucketOf = (t) => daily ? bjDayStart(t) : Math.floor(t / 3600) * 3600;
+  const ts = [];
+  for (let t = bucketOf(L.s); t < L.e; t += daily ? 86400 : 3600) ts.push(t);
+  const src = (na.chartDim === 'user' ? L.byUserHour : L.byModelHour);
+  const keyOf = (r) => na.chartDim === 'user' ? r.username : r.model_name;
+  const val = (r) => na.chartMetric === 'usd' ? naUsd(r.quota) : na.chartMetric === 'tok' ? r.token_used : r.count;
+  const rank = naGroup(src, keyOf).filter((a) => naMatch(keyOf({ username: a.key, model_name: a.key }) + ' ' + naName(a.key)));
+  const top = rank.slice(0, 8).map((a) => a.key), rest = new Set(rank.slice(8).map((a) => a.key));
+  const grid = new Map(); // key -> bucket -> value
+  for (const r of src) {
+    const k = top.includes(keyOf(r)) ? keyOf(r) : rest.has(keyOf(r)) ? '__other' : null;
+    if (!k) continue;
+    const b = bucketOf(r.created_at);
+    if (!grid.has(k)) grid.set(k, new Map());
+    grid.get(k).set(b, (grid.get(k).get(b) || 0) + val(r));
+  }
+  const series = top.map((k, i) => ({ k, label: na.chartDim === 'user' ? naName(k) : k, color: PALETTE[i] }));
+  if (rest.size) series.push({ k: '__other', label: `其他 ${rest.size} 个`, color: OTHER_COLOR });
+  const fmtV = (v) => na.chartMetric === 'usd' ? '$' + v.toFixed(2) : fmtN(Math.round(v));
+  if (window.naChartObj) window.naChartObj.destroy();
+  window.naChartObj = new Chart($('naChart'), {
+    type: 'bar',
+    data: { labels: ts.map((t) => fmtTs(t, daily ? 1440 : 60)),
+      datasets: series.map((s) => ({ label: s.label, backgroundColor: css(s.color), stack: 's', data: ts.map((t) => grid.get(s.k)?.get(t) || 0) })) },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { labels: { color: css('--muted'), boxWidth: 10, boxHeight: 10 } },
+        tooltip: { filter: (i) => i.raw > 0, callbacks: { label: (c) => `${c.dataset.label}：${fmtV(c.raw)}` } } },
+      scales: { x: { stacked: true, grid: { display: false }, ticks: { color: css('--muted'), maxRotation: 0, autoSkipPadding: 12 } },
+        y: { stacked: true, grid: { color: css('--line') }, ticks: { color: css('--muted'), callback: (v) => na.chartMetric === 'usd' ? '$' + v : fmtBig(v) } } },
+    },
+  });
+}
+
+function renderNaTable() {
+  const L = na.last;
+  document.querySelectorAll('#naTblTabs button[data-t]').forEach((b) => b.classList.toggle('on', b.dataset.t === na.tbl));
+  let rows, head, cell;
+  const totalQ = L.byUserHour.reduce((a, r) => a + r.quota, 0) || 1;
+  const num = (a) => `<td>${fmtN(a.count)}</td><td>${fmtN(a.tok)}</td><td><b>${naFmtUsd(a.quota)}</b></td><td class="muted">${naFmtCny(a.quota)}</td>` +
+    `<td class="l"><div class="bar" style="width:${Math.max(0.5, 100 * a.quota / totalQ).toFixed(1)}%"></div></td><td>${(100 * a.quota / totalQ).toFixed(1)}%</td>`;
+  const numHead = `<th>调用次数</th><th>Token</th><th>消费</th><th></th><th class="l" style="width:110px">占比</th><th></th>`;
+  if (na.tbl === 'user') {
+    rows = naGroup(L.byUserHour, (r) => r.username).filter((a) => naMatch(a.key + ' ' + naName(a.key)));
+    head = `<tr><th class="l">客户</th><th class="l">分组</th>${numHead}<th>剩余额度</th><th class="l">状态</th></tr>`;
+    cell = (a) => { const u = na.users[a.key];
+      return `<td class="l"><b>${esc(naName(a.key))}</b> <span class="muted small">${esc(a.key)}</span></td><td class="l muted">${esc(u?.group || '')}</td>${num(a)}` +
+        `<td>${u ? naFmtUsd(u.quota) : '—'}</td><td class="l">${u ? (u.status === 1 ? '<span class="badge ok">正常</span>' : '<span class="badge bad">已禁用</span>') : ''}</td>`; };
+  } else if (na.tbl === 'model') {
+    rows = naGroup(L.byModelHour, (r) => r.model_name).filter((a) => naMatch(a.key));
+    head = `<tr><th class="l">模型</th>${numHead}</tr>`;
+    cell = (a) => `<td class="l"><b>${esc(a.key)}</b></td>${num(a)}`;
+  } else if (na.tbl === 'um') {
+    rows = naGroup(L.flow, (r) => r.username + '\u0001' + r.model_name).filter((a) => { const [u, m] = a.key.split('\u0001'); return naMatch(`${u} ${naName(u)} ${m}`); });
+    head = `<tr><th class="l">客户</th><th class="l">模型</th>${numHead}</tr>`;
+    cell = (a) => { const [u, m] = a.key.split('\u0001'); return `<td class="l"><b>${esc(naName(u))}</b> <span class="muted small">${esc(u)}</span></td><td class="l">${esc(m)}</td>${num(a)}`; };
+  } else if (na.tbl === 'balance') {
+    rows = (naBalances() || []).filter((b) => naMatch(b.key + ' ' + naName(b.key)));
+    head = `<tr><th class="l">客户</th><th class="l">分组</th><th class="l">状态</th><th>剩余额度</th><th></th><th>近 7 天消费</th><th>日均消耗</th><th>预计可用</th><th class="l">提醒</th></tr>`;
+    cell = (b) => `<td class="l"><b>${esc(naName(b.key))}</b> <span class="muted small">${esc(b.key)}</span></td><td class="l muted">${esc(b.u.group || '')}</td>` +
+      `<td class="l">${b.u.status === 1 ? '<span class="badge ok">正常</span>' : '<span class="badge bad">已禁用</span>'}</td>` +
+      `<td><b>${naFmtUsd(b.u.quota)}</b></td><td class="muted">${naFmtCny(b.u.quota)}</td>` +
+      `<td>${b.perDay ? naFmtUsd(b.perDay * 7) : '—'}</td><td>${b.perDay ? naFmtUsd(b.perDay) : '—'}</td><td>${fmtDays(b.days)}</td>` +
+      `<td class="l">${b.low ? '<span class="badge bad">余额偏低</span>' : b.perDay ? '' : '<span class="muted small">近 7 天无消耗</span>'}</td>`;
+    if (na.usersErr) rows = [];
+  } else {
+    rows = naGroup(L.flow, (r) => r.channel_name || (r.channel_id ? `渠道 #${r.channel_id}` : '(未记录渠道)')).filter((a) => naMatch(a.key));
+    head = `<tr><th class="l">渠道</th>${numHead}</tr>`;
+    cell = (a) => `<td class="l"><b>${esc(a.key)}</b></td>${num(a)}`;
+  }
+  $('naTbl').innerHTML = head + (rows.map((a) => `<tr class="${a.low ? 'hl' : ''}">${cell(a)}</tr>`).join('') || `<tr><td colspan="10" class="l muted">没有数据</td></tr>`);
+  na.tblRows = rows;
+}
+
+function naCsv() {
+  if (!na.last) return;
+  const q = (s) => `"${String(s).replace(/"/g, '""')}"`;
+  const lines = ['username,display_name,group,model_name,channel,count,token_used,quota,usd'];
+  for (const r of na.last.flow) {
+    lines.push([q(r.username), q(naName(r.username)), q(r.use_group || ''), q(r.model_name), q(r.channel_name || r.channel_id || ''),
+      r.count, r.token_used, r.quota, naUsd(r.quota).toFixed(6)].join(','));
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }));
+  a.download = `customers_${fmtDate(na.last.s)}_${fmtDate(na.last.e)}.csv`;
+  a.click();
+}
+
+// ---------- 页面切换 & 初始化 ----------
+function showView(v) {
+  document.querySelectorAll('#viewTabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+  $('view-baidu').classList.toggle('hidden', v !== 'baidu');
+  $('view-newapi').classList.toggle('hidden', v !== 'newapi');
+  // 顶部的「立即查询 / 刷新状态」属于百度页；new-api 页有自己的按钮
+  $('refresh').classList.toggle('hidden', v !== 'baidu'); $('live').classList.toggle('hidden', v !== 'baidu');
+  store.set('ud.view', v, true);
+  if (v === 'newapi' && na.last) renderNaChart();
+  if (v === 'baidu' && st.last) renderChart();
+}
+(function naInit() {
+  $('naBase').value = store.get('ud.naBase') || '';
+  $('naUser').value = store.get('ud.naUser') || '';
+  $('naRemember').checked = store.get('ud.naRemember') === '1';
+  $('naToken').value = store.get('ud.naToken') || '';
+  document.querySelectorAll('#viewTabs button').forEach((b) => b.onclick = () => showView(b.dataset.v));
+  document.querySelectorAll('#naTblTabs button[data-t]').forEach((b) => b.onclick = () => { na.tbl = b.dataset.t; renderNaTable(); });
+  $('naConnect').onclick = naConnect;
+  $('naRefresh').onclick = () => naRefresh();
+  $('naFind').oninput = () => { if (na.last) { renderNaChart(); renderNaTable(); } };
+  $('naCsv').onclick = naCsv;
+  $('naLowUsd').value = store.get('ud.naLowUsd') || '10';
+  $('naLowDays').value = store.get('ud.naLowDays') || '3';
+  for (const id of ['naLowUsd', 'naLowDays']) $(id).oninput = () => {
+    store.set('ud.' + id, $(id).value.trim(), true);
+    if (na.last) renderNa();
+  };
+  $('interval').addEventListener('change', naSchedule);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && na.status && !na.nextAt && !na.busy && Number($('interval').value)) naRefresh(); });
+  showView(store.get('ud.view') || 'newapi');
+  modeReady.then(() => {
+    const c = CFG;
+    $('naCorsHelp').classList.toggle('hidden', MODE !== 'direct');
+    $('naCorsOrigin').textContent = location.origin;
+    $('naCorsSnippet').textContent =
+`location ~ ^/api/(status|data/|data/users|data/flow|user/|log/stat)$ {
+    add_header Access-Control-Allow-Origin "${location.origin}" always;
+    add_header Access-Control-Allow-Headers "Authorization, New-Api-User" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    add_header Access-Control-Max-Age 600 always;
+    if ($request_method = OPTIONS) { return 204; }
+    proxy_pass http://127.0.0.1:3000;   # 改成你现有的 new-api 转发地址
+}`;
+    if (c.newapiBase && !$('naBase').value) $('naBase').value = c.newapiBase;
+    if ($('naBase').value && ($('naToken').value || c.hasNewapiToken)) naConnect();
+  }).catch(() => {});
+})();
+</script>
+</body>
+</html>

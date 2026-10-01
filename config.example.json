@@ -1,0 +1,10 @@
+{
+  "upstream": "百度接入域名，例如 aigw.bce.baidu.com",
+  "auth": "bearer 或 aksk",
+  "apiKey": "auth=bearer 时填：账号下任意一把可用的 sk- Key",
+  "ak": "auth=aksk 时填：百度云 Access Key",
+  "sk": "auth=aksk 时填：百度云 Secret Key",
+  "newapiBase": "new-api 地址，例如 https://api.你们的域名.com",
+  "newapiToken": "new-api 管理员访问令牌（勾选 log:read、user:read）",
+  "newapiUserId": "旧版 new-api 才需要：令牌所属管理员的用户 ID，新版留空"
+}
